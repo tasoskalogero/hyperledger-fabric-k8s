@@ -1,0 +1,132 @@
+ minikube start --mount-string /home/kalogeropoulos/Projects/hlf/fabric-samples/test-network:/host  --mount
+ eval $(minikube -p minikube docker-env)
+
+minikube dashboard
+
+
+start pods
+copy from container to host
+kubectl cp hyperledger/ca-org1-65cbbc64b6-299zh:/etc/hyperledger/fabric-ca-server /home/kalogeropoulos/Projects/hlf/fabric-samples/test-network/organizations/fabric-ca/org1
+
+run "regiserEnroll.sh" script (createOrg1)
+
+ERRORS:
+[from-client] cannot validate certificate for 192.168.49.2 because it doesn't contain any IP SANs
+
+
+
+------
+minikube start --mount-string /home/kalogeropoulos/Projects/fabric-external-chaincodes:/host  --mount
+eval $(minikube -p minikube docker-env)
+
+
+kubectl create ns hyperledger
+
+in project directory:
+mkdir storage
+
+
+add 744 to buildpack/bin scripts
+
+point docker to minikube vm: eval $(minikube -p minikube docker-env)
+
+get cluster ip
+kubectl cluster-info
+
+minikube addons enable ingress
+
+
+===============================================
+TODOs 
+./organizations/ccp-generate.sh
+## --> Modify connection profiles with IP address and port of pods
+192.168.49.2.nip.io
+
+======
+## scripts/createChannel.sh $CHANNEL_NAME $CLI_DELAY $MAX_RETRY $VERBOSE
+(test-network) ./scripts/createChannel.sh mychannel 3 5 true
+
+
+
+==================== PORT MAPPING ===========================
+
+org1-ca --> 30001 -> 7054 
+org2-ca --> 30002 -> 8054
+ca-orderer --> 30003 -> 9054
+
+orderer --> 30004 -> 7050
+peer0-org1 --> 30005 -> 7051
+peer0-org2 --> 30006 -> 9051
+
+
+
+Install cc
+
+0. Package chaincode (change connection.json and metadata.json)
+1. go to test-network
+2. setGlobals 1
+3. peer lifecycle chaincode install ../asset-transfer-basic/chaincode-external/asset-transfer-basic-org1.tgz
+
+repeat 0,1,2,3 for org2  - change connection.json
+
+note the cc_id on both organizations
+
+org1: basic:a0d72a3fbd49a6f041036fdba4a1fd2186375890a14f64d793efecbbbf6f1b2b
+org2: basic:99dba9716eb9c7bea9ee1d7bd444b430f6741bf2f32d790093d356eb608136ff
+
+
+(cc directory) docker build -t chaincode/basic:1.0 .
+
+modify cc deployment files
+AND 
+deploy cc on k8s
+
+
+(org1)
+from test-network: 
+
+setGlobals 1
+peer lifecycle chaincode queryinstalled
+OR: peer lifecycle chaincode queryinstalled --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt 
+
+Approve CC
+setGlobals 1
+#TODO CHANNEL_NAME and PKGID and ORDERER_CA vars
+export PKGID=basic:a0d72a3fbd49a6f041036fdba4a1fd2186375890a14f64d793efecbbbf6f1b2b
+peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name basic --version 1.0 --init-required --package-id $PKGID --sequence 1 -o 192.168.49.2.nip.io:30004 --tls --cafile $ORDERER_CA
+
+Check approvals
+peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name basic --version 1.0 --init-required --sequence 1 -o 192.168.49.2.nip.io:30004 --tls --cafile $ORDERER_CA
+
+
+repeat Approve CC for Org2
+
+setGlobals 2
+export PKGID=basic:99dba9716eb9c7bea9ee1d7bd444b430f6741bf2f32d790093d356eb608136ff
+
+peer lifecycle chaincode approveformyorg --channelID $CHANNEL_NAME --name basic --version 1.0 --init-required --package-id $PKGID --sequence 1 -o 192.168.49.2.nip.io:30004 --tls --cafile $ORDERER_CA
+
+peer lifecycle chaincode checkcommitreadiness --channelID $CHANNEL_NAME --name basic --version 1.0 --init-required --sequence 1 -o 192.168.49.2.nip.io:30004 --tls --cafile $ORDERER_CA
+Should be True, True for both organizations
+
+
+Commit cc from ANY peer
+Here using org2
+peer lifecycle chaincode commit -o 192.168.49.2.nip.io:30004 --channelID $CHANNEL_NAME --name basic --version 1.0 --sequence 1 --init-required --tls true --cafile $ORDERER_CA --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses 192.168.49.2.nip.io:30006 --tlsRootCertFiles organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+
+query committed
+peer lifecycle chaincode querycommitted -o 192.168.49.2.nip.io:30004 --channelID $CHANNEL_NAME --name basic --tls --cafile $ORDERER_CA --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+
+
+# invoke from ANY peer
+
+peer chaincode invoke -o 192.168.49.2.nip.io:30004 --ordererTLSHostnameOverride 192.168.49.2.nip.io --tls true --cafile $ORDERER_CA -C $CHANNEL_NAME -n basic --isInit --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses 192.168.49.2.nip.io:30006 --tlsRootCertFiles organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"InitLedger","Args":[]}' --waitForEvent
+ 
+
+
+peer chaincode invoke -o 192.168.49.2.nip.io:30004 --tls true --cafile $ORDERER_CA -C $CHANNEL_NAME -n basic --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses 192.168.49.2.nip.io:30006 --tlsRootCertFiles organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["createAsset","tasosCar","red","50","tasos", "1231232123"]}' --waitForEvent
+
+
+peer chaincode invoke -o 192.168.49.2.nip.io:30004 --tls true --cafile $ORDERER_CA -C $CHANNEL_NAME -n basic --peerAddresses 192.168.49.2.nip.io:30005 --tlsRootCertFiles organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses 192.168.49.2.nip.io:30006 --tlsRootCertFiles organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["DeleteAsset","tasosCar"]}' --waitForEvent
+

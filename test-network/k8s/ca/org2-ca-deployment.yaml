@@ -1,0 +1,66 @@
+--- #---------------- CA org2 Deployment ---------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ca-org2
+  name: ca-org2
+  namespace: hyperledger
+spec:
+  selector:
+    matchLabels:
+      app: ca-org2
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ca-org2
+    spec:
+      containers:
+        - args:
+          - sh
+          - -c
+          - fabric-ca-server start -b admin:adminpw -d
+          env:
+            - name: FABRIC_CA_HOME
+              value: /etc/hyperledger/fabric-ca-server
+            - name: FABRIC_CA_SERVER_CA_NAME
+              value: ca-org2
+            - name: FABRIC_CA_SERVER_TLS_ENABLED
+              value: "true"
+              # Need to specify port, because by default it's 7054
+            - name: FABRIC_CA_SERVER_PORT
+              value: "8054"
+          image: hyperledger/fabric-ca:latest
+          name: ca-org2
+          ports:
+            - containerPort: 8054
+          volumeMounts:
+            - mountPath: /etc/hyperledger/fabric-ca-server
+              name: ca-org2-claim0
+              readOnly: false
+      restartPolicy: Always
+      volumes:
+        - name: ca-org2-claim0
+          hostPath:
+            path: /host/test-network/organizations/fabric-ca/org2
+            type: DirectoryOrCreate
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ca-org2-service
+  namespace: hyperledger
+spec:
+  type: NodePort
+  selector:
+    app: ca-org2
+  ports:
+    - protocol: TCP
+      port: 30002
+      nodePort: 30002
+      targetPort: 8054

@@ -1,0 +1,108 @@
+--- #---------------- CA org1 Deployment ---------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: orderer-example-com
+  name: orderer-example-com
+  namespace: hyperledger
+spec:
+  selector:
+    matchLabels:
+      app: orderer-example-com
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: orderer-example-com
+    spec:
+      containers:
+        - args:
+          - sh
+          - -c
+          - orderer
+          env:
+            - name: FABRIC_LOGGING_SPEC
+              value: "INFO"
+            - name: ORDERER_GENERAL_LISTENADDRESS
+              value: 0.0.0.0
+            - name: ORDERER_OPERATIONS_LISTENADDRESS
+              value: 0.0.0.0:8443
+            - name: ORDERER_GENERAL_GENESISMETHOD
+              value: file
+            - name: ORDERER_GENERAL_GENESISFILE
+              value: /var/hyperledger/orderer/orderer.genesis.block
+            - name: ORDERER_GENERAL_LOCALMSPID
+              value: OrdererMSP
+            - name: ORDERER_GENERAL_LOCALMSPDIR
+              value: /var/hyperledger/orderer/msp
+            # enabled TLS
+            - name: ORDERER_GENERAL_TLS_ENABLED
+              value: "true"
+            - name: ORDERER_GENERAL_TLS_PRIVATEKEY
+              value: /var/hyperledger/orderer/tls/server.key
+            - name: ORDERER_GENERAL_TLS_CERTIFICATE
+              value: /var/hyperledger/orderer/tls/server.crt
+            - name: ORDERER_GENERAL_TLS_ROOTCAS
+              value: "[/var/hyperledger/orderer/tls/ca.crt]"
+            - name: ORDERER_KAFKA_TOPIC_REPLICATIONFACTOR
+              value: "1"
+            - name: ORDERER_KAFKA_VERBOSE
+              value: "true"
+            - name: ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE
+              value: /var/hyperledger/orderer/tls/server.crt  
+            - name: ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY
+              value: /var/hyperledger/orderer/tls/server.key                   
+            - name: ORDERER_GENERAL_CLUSTER_ROOTCAS
+              value: "[/var/hyperledger/orderer/tls/ca.crt]"
+          workingDir: /opt/gopath/src/github.com/hyperledger/fabric
+          image: hyperledger/fabric-orderer:2.3
+          name: orderer-example-com
+          ports:
+            - containerPort: 7050
+            - containerPort: 8443
+          volumeMounts:        
+            - mountPath: /var/hyperledger/orderer/orderer.genesis.block
+              name: orderer-example-com-claim0
+            - mountPath: /var/hyperledger/orderer/msp
+              name: orderer-example-com-claim1
+            - mountPath: /var/hyperledger/orderer/tls
+              name: orderer-example-com-claim2      
+            - mountPath: /var/hyperledger/production/orderer
+              name: orderer-example-com-claim3        
+      restartPolicy: Always
+
+      volumes:
+        - name: orderer-example-com-claim0
+          hostPath:            
+            path: /host/test-network/system-genesis-block/genesis.block            
+        - name: orderer-example-com-claim1
+          hostPath:            
+            path: /host/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp
+        - name: orderer-example-com-claim2
+          hostPath:            
+            path: /host/test-network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/            
+        - name: orderer-example-com-claim3
+          hostPath:
+            path: orderer.example.com
+            type: DirectoryOrCreate
+
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: orderer-example-com-service
+  namespace: hyperledger
+spec:
+  type: NodePort
+  selector:
+    app: orderer-example-com
+  ports:
+    - protocol: TCP
+      port: 30004
+      nodePort: 30004
+      targetPort: 7050

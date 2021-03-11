@@ -1,0 +1,63 @@
+--- #---------------- CA org1 Deployment ---------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ca-org1
+  name: ca-org1
+  namespace: hyperledger
+spec:
+  selector:
+    matchLabels:
+      app: ca-org1
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ca-org1
+    spec:
+      containers:
+        - args:
+          - sh
+          - -c
+          - fabric-ca-server start -b admin:adminpw -d
+          env:
+            - name: FABRIC_CA_HOME
+              value: /etc/hyperledger/fabric-ca-server
+            - name: FABRIC_CA_SERVER_CA_NAME
+              value: ca-org1
+            - name: FABRIC_CA_SERVER_TLS_ENABLED
+              value: "true"
+          image: hyperledger/fabric-ca:latest
+          name: ca-org1
+          ports:
+            - containerPort: 7054
+          volumeMounts:
+            - mountPath: /etc/hyperledger/fabric-ca-server
+              name: ca-org1-claim0
+              readOnly: false
+      restartPolicy: Always
+      volumes:
+        - name: ca-org1-claim0
+          hostPath:
+            path: /host/test-network/organizations/fabric-ca/org1
+            type: DirectoryOrCreate
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ca-org1-service
+  namespace: hyperledger
+spec:
+  type: NodePort
+  selector:
+    app: ca-org1
+  ports:
+    - protocol: TCP
+      port: 30001
+      nodePort: 30001
+      targetPort: 7054

@@ -1,6 +1,6 @@
 # Deploy Hyperledger Fabric network on Kubernetes
 
-This project describes step-by-step how to deploy the Fabric Certificate Authority, the Fabric Orderer, Fabric Peers and chaindode as an external service on Kubernetes.
+This project describes step-by-step how to deploy the Fabric Certificate Authority, the Fabric Orderer, Fabric Peers and chaindode as an external service on Kubernetes using minikube.
 
 The blockchain network will consist of a RAFT orderer service, 2 organizations that have a peer for each one (org1 and org2) and a CA for each organization.
 

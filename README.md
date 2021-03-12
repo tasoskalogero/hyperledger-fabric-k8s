@@ -40,7 +40,7 @@ KubeDNS is running at https://192.168.49.2:8443/api/v1/namespaces/kube-system/se
 ```
 In the command above, the cluster IP is `192.168.49.2` .
 
-The cluster IP will be combined with [nip.io](https://nip.io/) to map the IP with a hostname. 
+The cluster IP will be combined with [nip.io](https://nip.io/) to map the IP with a hostname (FOR DEVELOPMENT PURPOSES ONLY). 
 
 Perform the following necessary network configurations:
 

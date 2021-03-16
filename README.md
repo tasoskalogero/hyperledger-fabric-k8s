@@ -79,6 +79,7 @@ export CLUSTER_IP_HOSTNAME=192.168.49.2.nip.io
    * `network/organizations/fabric-ca/org2`
 
 
+4. Replace `192-168-49-2-nip-io` with `your-cluster-ip-nip-io` at the `test-network/organizations/fabric-ca/registerEnroll.sh` script.
 
 ##### Configure docker cli to connect with minikube's docker daemon
 

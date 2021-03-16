@@ -599,7 +599,7 @@ sudo ./clean.sh
 
 
 
-#### Port mapping
+#### Port mapping - currently configured
 
 ```
 org1-ca-service --> 30001 -> 7054 
